@@ -210,28 +210,34 @@ public class RegionAddressRepositoryOdb implements RegionAddressRepository {
 	}
 	
 	
-	public void fillWithSuggestedStreets(MapObject o, String name, List<Street> streetsToFill){
+	public void fillWithSuggestedStreets(MapObject o, List<Street> streetsToFill, String... names){
 		assert o instanceof PostCode || o instanceof City;
 		City city = (City) (o instanceof City ? o : null); 
 		PostCode post = (PostCode) (o instanceof PostCode ? o : null);
 		preloadStreets(o);
-		name = name.toLowerCase();
-		
+		String[] lNames = new String[names.length];
 		Collection<Street> streets = post == null ? city.getStreets() : post.getStreets() ; 
 		int ind = 0;
-		if(name.length() == 0){
+		if(names.length == 0){
 			streetsToFill.addAll(streets);
 			return;
 		}
+		
+		for (int i = 0; i <= names.length; i++) {
+			lNames[i] = names[i].toLowerCase();
+		}
+		
 		ind = 0;
 		for (Street s : streets) {
 			String sName = useEnglishNames ? s.getEnName() : s.getName();
 			String lowerCase = sName.toLowerCase();
-			if (lowerCase.startsWith(name)) {
-				streetsToFill.add(ind, s);
-				ind++;
-			} else if (lowerCase.contains(name)) {
-				streetsToFill.add(s);
+			for (String name : lNames) {
+				if (lowerCase.startsWith(name)) {
+					streetsToFill.add(ind, s);
+					ind++;
+				} else if (lowerCase.contains(name)) {
+					streetsToFill.add(s);
+				}
 			}
 		}
 	}
