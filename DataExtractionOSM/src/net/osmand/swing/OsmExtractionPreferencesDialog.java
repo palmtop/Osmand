@@ -47,7 +47,7 @@ public class OsmExtractionPreferencesDialog extends JDialog {
     }
 	
 	public void showDialog(){
-		setSize(600, 280);
+		setSize(600, 340);
         double x = getParent().getBounds().getCenterX();
         double y = getParent().getBounds().getCenterY();
         setLocation((int) x - getWidth() / 2, (int) y - getHeight() / 2);

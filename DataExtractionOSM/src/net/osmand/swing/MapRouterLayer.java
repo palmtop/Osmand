@@ -30,6 +30,7 @@ import net.osmand.binary.BinaryRouteDataReader;
 import net.osmand.binary.BinaryMapIndexReader.TagValuePair;
 import net.osmand.binary.BinaryRouteDataReader.RouteSegment;
 import net.osmand.binary.BinaryRouteDataReader.RouteSegmentResult;
+import net.osmand.binary.BinaryRouteDataReader.RouteSegmentVisitor;
 import net.osmand.binary.BinaryRouteDataReader.RoutingContext;
 import net.osmand.data.DataTileManager;
 import net.osmand.osm.LatLon;
@@ -93,14 +94,19 @@ public class MapRouterLayer implements MapPanelLayer {
 			private static final long serialVersionUID = 507156107455281238L;
 
 			public void actionPerformed(ActionEvent e) {
-				List<Way> ways = route(startRoute, endRoute);
-				DataTileManager<Way> points = new DataTileManager<Way>();
-				points.setZoom(11);
-				for(Way w : ways){
-					LatLon n = w.getLatLon();
-					points.registerObject(n.getLatitude(), n.getLongitude(), w);
-				}
-				map.setPoints(points);
+				new Thread(){
+					@Override
+					public void run() {
+						List<Way> ways = route(startRoute, endRoute);
+						DataTileManager<Way> points = new DataTileManager<Way>();
+						points.setZoom(11);
+						for(Way w : ways){
+							LatLon n = w.getLatLon();
+							points.registerObject(n.getLatitude(), n.getLongitude(), w);
+						}
+						map.setPoints(points);
+					}
+				}.start();
 			}
 		};
 		menu.add(route);
@@ -108,14 +114,19 @@ public class MapRouterLayer implements MapPanelLayer {
 			private static final long serialVersionUID = 507156107455281238L;
 
 			public void actionPerformed(ActionEvent e) {
-				List<Way> ways = alternateRoute(startRoute, endRoute);
-				DataTileManager<Way> points = new DataTileManager<Way>();
-				points.setZoom(11);
-				for(Way w : ways){
-					LatLon n = w.getLatLon();
-					points.registerObject(n.getLatitude(), n.getLongitude(), w);
-				}
-				map.setPoints(points);
+				new Thread() {
+					@Override
+					public void run() {
+						List<Way> ways = alternateRoute(startRoute, endRoute);
+						DataTileManager<Way> points = new DataTileManager<Way>();
+						points.setZoom(11);
+						for (Way w : ways) {
+							LatLon n = w.getLatLon();
+							points.registerObject(n.getLatitude(), n.getLongitude(), w);
+						}
+						map.setPoints(points);
+					}
+				}.start();
 			}
 		};
 		menu.add(altroute);
@@ -123,16 +134,21 @@ public class MapRouterLayer implements MapPanelLayer {
 			private static final long serialVersionUID = 507156107455281238L;
 
 			public void actionPerformed(ActionEvent e) {
-				List<Way> ways = selfRoute(startRoute, endRoute);
-				if (ways != null) {
-					DataTileManager<Way> points = new DataTileManager<Way>();
-					points.setZoom(11);
-					for (Way w : ways) {
-						LatLon n = w.getLatLon();
-						points.registerObject(n.getLatitude(), n.getLongitude(), w);
+				new Thread() {
+					@Override
+					public void run() {
+						List<Way> ways = selfRoute(startRoute, endRoute);
+						if (ways != null) {
+							DataTileManager<Way> points = new DataTileManager<Way>();
+							points.setZoom(11);
+							for (Way w : ways) {
+								LatLon n = w.getLatLon();
+								points.registerObject(n.getLatitude(), n.getLongitude(), w);
+							}
+							map.setPoints(points);
+						}
 					}
-					map.setPoints(points);
-				}
+				}.start();
 			}
 		};
 		
@@ -341,9 +357,31 @@ public class MapRouterLayer implements MapPanelLayer {
 							+ (road.getId()  >> 3));
 				}
 				
-				
+				final DataTileManager<Way> points = new DataTileManager<Way>();
+				points.setZoom(11);
+				map.setPoints(points);
+				ctx.visitor = new RouteSegmentVisitor() {
+					
+					@Override
+					public void visitSegment(RouteSegment segment) {
+						Way way = new Way(-1);
+						for (int i = 0; i < segment.getRoad().getPointsLength(); i++) {
+							net.osmand.osm.Node n = new net.osmand.osm.Node(MapUtils.get31LatitudeY(segment.getRoad().getPoint31YTile(i)),
+									MapUtils.get31LongitudeX(segment.getRoad().getPoint31XTile(i)), -1);
+							way.addNode(n);
+						}
+						LatLon n = way.getLatLon();
+						points.registerObject(n.getLatitude(), n.getLongitude(), way);
+						map.prepareImage();
+						try {
+							Thread.sleep(30);
+						} catch (InterruptedException e1) {
+						}
+					}
+				};
+				List<RouteSegmentResult> searchRoute = router.searchRoute(ctx, st, e);
 
-				for(RouteSegmentResult s : router.searchRoute(ctx, st, e)){
+				for(RouteSegmentResult s : searchRoute){
 //					double dist = MapUtils.getDistance(s.startPoint, s.endPoint);
 					Way way = new Way(-1);
 					boolean plus = s.startPointIndex < s.endPointIndex;
