@@ -363,17 +363,26 @@ public class MapRouterLayer implements MapPanelLayer {
 				points.setZoom(11);
 				map.setPoints(points);
 				ctx.visitor = new RouteSegmentVisitor() {
+					private final static int F_SIZE = 10;
+					private List<RouteSegment> cache = new ArrayList<RouteSegment>();
 					
 					@Override
-					public void visitSegment(RouteSegment segment) {
-						Way way = new Way(-1);
-						for (int i = 0; i < segment.getRoad().getPointsLength(); i++) {
-							net.osmand.osm.Node n = new net.osmand.osm.Node(MapUtils.get31LatitudeY(segment.getRoad().getPoint31YTile(i)),
-									MapUtils.get31LongitudeX(segment.getRoad().getPoint31XTile(i)), -1);
-							way.addNode(n);
+					public void visitSegment(RouteSegment s) {
+						cache.add(s);
+						if(cache.size() < F_SIZE){
+							return;
 						}
-						LatLon n = way.getLatLon();
-						points.registerObject(n.getLatitude(), n.getLongitude(), way);
+						for (RouteSegment segment : cache) {
+							Way way = new Way(-1);
+							for (int i = 0; i < segment.getRoad().getPointsLength(); i++) {
+								net.osmand.osm.Node n = new net.osmand.osm.Node(MapUtils.get31LatitudeY(segment.getRoad()
+										.getPoint31YTile(i)), MapUtils.get31LongitudeX(segment.getRoad().getPoint31XTile(i)), -1);
+								way.addNode(n);
+							}
+							LatLon n = way.getLatLon();
+							points.registerObject(n.getLatitude(), n.getLongitude(), way);
+						}
+						cache.clear();
 						try {
 							SwingUtilities.invokeAndWait(new Runnable() {
 
@@ -388,11 +397,11 @@ public class MapRouterLayer implements MapPanelLayer {
 						}
 					}
 				};
+				List<RouteSegmentResult> searchRoute = router.searchRoute(ctx, st, e);
 				try {
-					Thread.sleep(1000);
+					Thread.sleep(4000);
 				} catch (InterruptedException e1) {
 				}
-				List<RouteSegmentResult> searchRoute = router.searchRoute(ctx, st, e);
 
 				for(RouteSegmentResult s : searchRoute){
 //					double dist = MapUtils.getDistance(s.startPoint, s.endPoint);
