@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.io.StringReader;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
+import javax.swing.SwingUtilities;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -372,13 +374,24 @@ public class MapRouterLayer implements MapPanelLayer {
 						}
 						LatLon n = way.getLatLon();
 						points.registerObject(n.getLatitude(), n.getLongitude(), way);
-						map.prepareImage();
 						try {
-							Thread.sleep(30);
+							SwingUtilities.invokeAndWait(new Runnable() {
+
+								@Override
+								public void run() {
+									map.prepareImage();
+								}
+							});
 						} catch (InterruptedException e1) {
+						} catch (InvocationTargetException e) {
+							e.printStackTrace();
 						}
 					}
 				};
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e1) {
+				}
 				List<RouteSegmentResult> searchRoute = router.searchRoute(ctx, st, e);
 
 				for(RouteSegmentResult s : searchRoute){
