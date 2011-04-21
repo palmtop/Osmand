@@ -29,6 +29,7 @@ public class TileSourceManager {
 		protected String ext;
 		private int avgSize;
 		private int bitDensity;
+		private boolean baseMapEnable;
 		
 		public TileSourceTemplate(File dir, String name, String urlToLoad) {
 			this(name, urlToLoad, determineExt(dir,".jpg"), 18, 1, 256, 16, 20000); //$NON-NLS-1$
@@ -63,11 +64,11 @@ public class TileSourceManager {
 		}
 
 		// default constructor
-		public TileSourceTemplate(String name, String urlToLoad) {
-			this(name, urlToLoad, ".jpg", 18, 1, 256, 16, 20000); //$NON-NLS-1$
+		public TileSourceTemplate(String name, String urlToLoad, String ext, int maxZoom, int minZoom, int tileSize, int bitDensity, int avgSize) {
+			this(name, urlToLoad, ext, maxZoom, minZoom, tileSize, bitDensity, avgSize, true) ;
 		}
 		
-		public TileSourceTemplate(String name, String urlToLoad, String ext, int maxZoom, int minZoom, int tileSize, int bitDensity, int avgSize) {
+		public TileSourceTemplate(String name, String urlToLoad, String ext, int maxZoom, int minZoom, int tileSize, int bitDensity, int avgSize, boolean baseMapEnable) {
 			this.maxZoom = maxZoom;
 			this.minZoom = minZoom;
 			this.name = name;
@@ -76,6 +77,7 @@ public class TileSourceManager {
 			this.ext = ext;
 			this.avgSize = avgSize;
 			this.bitDensity = bitDensity;
+			this.baseMapEnable = baseMapEnable;
 		}
 
 		@Override
@@ -109,6 +111,10 @@ public class TileSourceManager {
 		
 		public String getTileFormat(){
 			return ext;
+		}
+		
+		public boolean getBaseMapEnable() {
+			return baseMapEnable;
 		}
 
 		@Override
@@ -224,6 +230,8 @@ public class TileSourceManager {
 			list.add(getGoogleMapsSource());
 			list.add(getGoogleMapsSatelliteSource());
 			list.add(getGoogleMapsTerrainSource());
+			list.add(getGoogleMapsHybridSource());
+
 			
 			list.add(getCykloatlasCzSource());
 			list.add(getHikeBikeMapDeSource());
@@ -317,8 +325,10 @@ public class TileSourceManager {
 	public static TileSourceTemplate getGoogleMapsHybridSource(){
 //		Google Map Earth + Overlay
 //		GoogleEarthMapsOverlay.url=http://mt{$servernum}.google.com/vt/lyrs=h@130&hl={$lang}&x={$x}&y={$y}&z={$z}
-		return new TileSourceTemplate("Google Hybrid", "http://khm1.google.com/kh/v=59&x={1}&y={2}&z={0}", ".jpg", 20, 0, 256, 32, 18000); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		//return new TileSourceTemplate("Google Hybrid", "http://khm1.google.com/kh/v=59&x={1}&y={2}&z={0}", ".jpg", 20, 0, 256, 32, 18000); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		return new TileSourceTemplate("Google Hybrid", "http://mt3.google.com/vt/lyrs=h@140&hl=ko&x={1}&y={2}&z={0}", ".png", 20, 0, 256, 16, 18000, false); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	}
+
 
 	
 	// wrong projection ???

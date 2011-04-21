@@ -17,8 +17,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import net.osmand.Algoritms;
-import net.osmand.Version;
 import net.osmand.LogUtil;
+import net.osmand.Version;
+import net.osmand.map.ITileSource;
 
 import org.apache.commons.logging.Log;
 
@@ -75,24 +76,27 @@ public class MapTileDownloader {
 		public final int yTile;
 		public final String url;
 		public boolean error;
-		
-		public DownloadRequest(String url, File fileToSave, int xTile, int yTile, int zoom) {
+		public final ITileSource tileSource;
+
+		public DownloadRequest(String url, File fileToSave, int xTile, int yTile, int zoom, ITileSource tileSource) {
 			this.url = url;
 			this.fileToSave = fileToSave;
 			this.xTile = xTile;
 			this.yTile = yTile;
 			this.zoom = zoom;
+			this.tileSource = tileSource;
 		}
-		
-		public DownloadRequest(String url, File fileToSave) {
+
+		public DownloadRequest(String url, File fileToSave, ITileSource tileSource) {
 			this.url = url;
 			this.fileToSave = fileToSave;
 			xTile = -1;
 			yTile = -1;
 			zoom = -1;
+			this.tileSource = tileSource;
 		}
-		
-		public void setError(boolean error){
+
+		public void setError(boolean error) {
 			this.error = error;
 		}
 	}

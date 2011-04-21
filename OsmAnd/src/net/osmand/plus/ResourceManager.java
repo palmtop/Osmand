@@ -741,7 +741,7 @@ public class ResourceManager {
 		
 		public TileLoadDownloadRequest(File dirWithTiles, String url, File fileToSave, 
 				String tileId, ITileSource source, int tileX, int tileY, int zoom) {
-			super(url, fileToSave, tileX, tileY, zoom);
+			super(url, fileToSave, tileX, tileY, zoom, source);
 			this.dirWithTiles = dirWithTiles;
 			this.tileSource = source;
 			this.tileId = tileId;

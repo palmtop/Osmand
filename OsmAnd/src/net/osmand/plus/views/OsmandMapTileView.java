@@ -679,6 +679,61 @@ public class OsmandMapTileView extends SurfaceView implements IMapDownloaderCall
 
 		}
 	}
+	
+	public void overlayTileDownloaded(DownloadRequest request) {
+		if (request == null || rotate != 0) {
+			// if image is rotated call refresh the whole canvas
+			// because we can't find dirty rectangular region
+			
+			// if request null then we don't know exact images were changed
+			refreshMap();
+			return;
+		}
+		if (request.error) {
+			return;
+		}
+		if (request.zoom != getZoom()) {
+			return;
+		}
+		float w = getCenterPointX();
+		float h = getCenterPointY();
+		for (int i = 0; i < layers.size(); i++) {
+			try {
+				OsmandMapLayer layer = layers.get(i);
+				if (layer instanceof OverlayMapLayer) {
+					OverlayMapLayer overlayMapLayer = (OverlayMapLayer) layer;
+					float tileX = (float) MapUtils.getTileNumberX(getZoom(), longitude);
+					float tileY = (float) MapUtils.getTileNumberY(getZoom(), latitude);
+					
+					SurfaceHolder holder = getHolder();
+					synchronized (holder) {
+						tilesRect.set(request.xTile, request.yTile, request.xTile + 1, request.yTile + 1);
+						overlayMapLayer.calculatePixelRectangle(boundsRect, w, h, tileX, tileY, tilesRect);
+
+						if (boundsRect.left > getWidth() || boundsRect.right < 0 || boundsRect.bottom < 0 || boundsRect.top > getHeight()) {
+							return;
+						}
+
+						Canvas canvas = holder.lockCanvas(boundsRect);
+						if (canvas != null) {
+							canvas.save();
+							canvas.rotate(rotate, w, h);
+
+							try {
+								overlayMapLayer.tileDownloaded(canvas, request);
+								canvas.restore();
+							}
+							finally {
+								holder.unlockCanvasAndPost(canvas);
+							}
+						}
+					}
+				}
+			} catch (IndexOutOfBoundsException e) {
+				// skip it
+			}
+		}
+	}
 
 	// ///////////////////////////////// DRAGGING PART ///////////////////////////////////////
 	public float calcDiffTileY(float dx, float dy) {

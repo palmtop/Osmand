@@ -21,4 +21,8 @@
 <Button android:layout_width="wrap_content" android:id="@+id/NextButton" android:layout_height="wrap_content" android:background="@android:drawable/ic_media_next" android:layout_marginLeft="12dp" android:layout_marginRight="15dp"/>
 </LinearLayout>
 
+<SeekBar android:id="@+id/SeekBar"  android:visibility="invisible"
+			android:layout_marginLeft="140dp" android:layout_marginTop="2dp"
+			android:layout_width="60dp" android:layout_height="wrap_content" android:layout_gravity="top|center"
+			android:max="255" android:progress="128" />
 </FrameLayout>

@@ -52,6 +52,7 @@ import android.widget.Toast;
 
 public class SettingsActivity extends PreferenceActivity implements OnPreferenceChangeListener, OnPreferenceClickListener {
 	private final static String VECTOR_MAP = "#VECTOR_MAP"; //$NON-NLS-1$
+	private final static String NO_OVERLAY = "#NO_OVERLAY"; //$NON-NLS-1$
 	
 	private class BooleanPreference {
 		private final boolean defValue;
@@ -97,6 +98,7 @@ public class SettingsActivity extends PreferenceActivity implements OnPreference
 	private ListPreference maxLevelToDownload;
 	private ListPreference mapScreenOrientation;
 	private ListPreference voicePreference;
+	private ListPreference overlayTileSourcePreference;
 	private ListPreference rendererPreference;
 	private ListPreference routeServiceInterval;
 	private ListPreference routeServiceWaitInterval;
@@ -149,6 +151,8 @@ public class SettingsActivity extends PreferenceActivity implements OnPreference
 		userName.setOnPreferenceChangeListener(this);
 		userPassword = (EditTextPreference) screen.findPreference(OsmandSettings.USER_PASSWORD);
 		userPassword.setOnPreferenceChangeListener(this);
+		overlayTileSourcePreference =(ListPreference) screen.findPreference(OsmandSettings.OVERLAYMAP_TILE_SOURCES);
+		overlayTileSourcePreference.setOnPreferenceChangeListener(this);
 		applicationDir = (EditTextPreference) screen.findPreference(OsmandSettings.EXTERNAL_STORAGE_DIR);
 		applicationDir.setOnPreferenceChangeListener(this);
 		
@@ -368,6 +372,31 @@ public class SettingsActivity extends PreferenceActivity implements OnPreference
 		}
 		tileSourcePreference.setSummary(summary + mapName);
 		
+		Map<String, String> entriesOverlayMap = getOverlayTileSourceEntries(this);
+		entries = new String[entriesOverlayMap.size() + 1];
+		values = new String[entriesOverlayMap.size() + 1];
+		values[0] = NO_OVERLAY;
+		entries[0] = getString(R.string.no_overlay);
+		ki = 1;
+		for(Map.Entry<String, String> es : entriesOverlayMap.entrySet()){
+			entries[ki] = es.getValue();
+			values[ki] = es.getKey();
+			ki++;
+		}
+
+		overlayTileSourcePreference.setEntries(entries);
+		overlayTileSourcePreference.setEntryValues(values);
+		value = !OsmandSettings.isShowingOverlayMap(prefs)? NO_OVERLAY :OsmandSettings.getOverlayMapTileSourceName(prefs);
+		mapName = " " + (!OsmandSettings.isShowingOverlayMap(prefs) ? getString(R.string.no_overlay) : //$NON-NLS-1$
+			OsmandSettings.getOverlayMapTileSourceName(prefs));
+		overlayTileSourcePreference.setValue(value);
+		summary = overlayTileSourcePreference.getSummary().toString();
+		if (summary.lastIndexOf(':') != -1) {
+			summary = summary.substring(0, summary.lastIndexOf(':') + 1);
+		}
+		overlayTileSourcePreference.setSummary(summary + mapName);
+
+		
 		updateApplicationDirSummary();
     }
     
@@ -375,6 +404,15 @@ public class SettingsActivity extends PreferenceActivity implements OnPreference
 		component.setEntries(list);
 		component.setEntryValues(values);
 		component.setValue(selected);
+	}
+	
+
+	private static boolean isBaseMapEnable(String n) {
+		for(TileSourceTemplate l : TileSourceManager.getKnownSourceTemplates()) {
+			if (n.contains(l.getName()))
+				return l.getBaseMapEnable();
+		}
+		return true;
 	}
     
     public static Map<String, String> getTileSourceEntries(Context ctx){
@@ -398,19 +436,63 @@ public class SettingsActivity extends PreferenceActivity implements OnPreference
 				for (File f : files) {
 					if (f.getName().endsWith(SQLiteTileSource.EXT)) {
 						String n = f.getName();
-						map.put(f.getName(), n.substring(0, n.lastIndexOf('.')));
+						if(isBaseMapEnable(f.getName())){
+							map.put(f.getName(), n.substring(0, n.lastIndexOf('.')));
+						}
 					} else if (f.isDirectory() && !f.getName().equals(ResourceManager.TEMP_SOURCE_TO_LOAD)) {
-						map.put(f.getName(), f.getName());
+						if(isBaseMapEnable(f.getName())){
+							map.put(f.getName(), f.getName());
+						}
 					}
 				}
 			}
 		}
 		for(TileSourceTemplate l : TileSourceManager.getKnownSourceTemplates()){
-			map.put(l.getName(), l.getName());
+			if(l.getBaseMapEnable()){
+				map.put(l.getName(), l.getName());
+			}
 		}
 		return map;
 		
     }
+    
+
+
+    public static Map<String, String> getOverlayTileSourceEntries(Context ctx){
+   		Map<String, String> map = new LinkedHashMap<String, String>();
+   		File dir = OsmandSettings.extendOsmandPath(ctx, ResourceManager.TILES_PATH);
+   		if (dir != null && dir.canRead()) {
+   			File[] files = dir.listFiles();
+   			Arrays.sort(files, new Comparator<File>(){
+   				@Override
+   				public int compare(File object1, File object2) {
+   					if(object1.lastModified() > object2.lastModified()){
+   						return -1;
+   					} else if(object1.lastModified() == object2.lastModified()){
+   						return 0;
+   					}
+   					return 1;
+   				}
+   				
+   			});
+   			if (files != null) {
+   				for (File f : files) {
+   					if (f.getName().endsWith(SQLiteTileSource.EXT)) {
+   						String n = f.getName();
+   						map.put(f.getName(), n.substring(0, n.lastIndexOf('.')));
+   					} else if (f.isDirectory() && !f.getName().equals(ResourceManager.TEMP_SOURCE_TO_LOAD)) {
+   						map.put(f.getName(), f.getName());
+   					}
+   				}
+   			}
+   		}
+   		for(TileSourceTemplate l : TileSourceManager.getKnownSourceTemplates()){
+   			map.put(l.getName(), l.getName());
+   		}
+   		return map;
+   		
+       }
+
     
 
 	@Override
@@ -538,7 +620,22 @@ public class SettingsActivity extends PreferenceActivity implements OnPreference
 			summary += " " + (OsmandSettings.isUsingMapVectorData(prefs) ? getString(R.string.vector_data) : //$NON-NLS-1$
 				OsmandSettings.getMapTileSourceName(prefs));
 			tileSourcePreference.setSummary(summary);
-			
+		} else if (preference == overlayTileSourcePreference) {
+			if (NO_OVERLAY.equals((String) newValue)) {
+				edit.putBoolean(OsmandSettings.SHOW_OVERLAY_MAP, false);
+			} else {
+				edit.putString(OsmandSettings.OVERLAYMAP_TILE_SOURCES, (String) newValue);
+				edit.putBoolean(OsmandSettings.SHOW_OVERLAY_MAP, true);
+			}
+			edit.commit();
+			String summary = overlayTileSourcePreference.getSummary().toString();
+			if (summary.lastIndexOf(':') != -1) {
+				summary = summary.substring(0, summary.lastIndexOf(':') + 1);
+			}
+			summary += " " + (!OsmandSettings.isShowingOverlayMap(prefs) ? getString(R.string.no_overlay) : //$NON-NLS-1$
+					OsmandSettings.getOverlayMapTileSourceName(prefs));
+			overlayTileSourcePreference.setSummary(summary);
+
 		}
 		return true;
 	}

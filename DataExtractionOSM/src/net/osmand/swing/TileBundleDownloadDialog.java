@@ -203,7 +203,7 @@ public class TileBundleDownloadDialog extends JDialog {
 								progressDialog.progress(1);
 							} else {
 								DownloadRequest req = new DownloadRequest(map.getUrlToLoad(x, y, zoom), 
-										new File(tilesLocation, file), x, y, zoom);
+										new File(tilesLocation, file), x, y, zoom, map);
 								instance.requestToDownload(req);
 							}
 

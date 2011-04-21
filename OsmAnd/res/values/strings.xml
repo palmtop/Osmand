@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <resources>
+	<string name="no_overlay">No Overlay</string>
+	<string name="layer_overlaymap">Overlay source</string>
+    <string name="overlaymap_tile_source_descr">Choose the source of overlay tiles: </string>
+    <string name="overlaymap_tile_source">Overlay Map tile source</string>
+    <string name="overlaymap_source">Overlay Map source</string>
+
 	<string name="use_osmand_routing_service">OsmAnd offline routing</string>
 	<string name="use_osmand_routing_service_descr">Use offline routing for long distances (experimental)</string>
 	<string name="osmand_routing_experimental">OsmAnd offline routing is experimental feature and it doesn\'t work for distance more than 20 km.\n Routing service is automatically switched to online Cloudmade.</string>

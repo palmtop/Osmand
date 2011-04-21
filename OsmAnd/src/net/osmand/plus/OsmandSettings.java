@@ -453,17 +453,31 @@ public class OsmandSettings {
 		return prefs.edit().putBoolean(USE_STEP_BY_STEP_RENDERING, rendering).commit();
 	}
 
+	// this value string is synchronized with settings_pref.xml preference name
+	public static final String SHOW_OVERLAY_MAP = "show_overlay_map"; //$NON-NLS-1$
+	public static final Boolean SHOW_OVERLAY_MAP_DEF = false;
+
+	public static boolean isShowingOverlayMap(SharedPreferences prefs) {
+		return prefs.getBoolean(SHOW_OVERLAY_MAP, SHOW_OVERLAY_MAP_DEF);
+	}
+	
+	public static boolean setShowOverlayMap(Context ctx, boolean val) {
+		SharedPreferences prefs = ctx.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_WORLD_READABLE);
+		return prefs.edit().putBoolean(SHOW_OVERLAY_MAP, val).commit();
+	}
 
 	// this value string is synchronized with settings_pref.xml preference name
 	public static final String MAP_VECTOR_DATA = "map_vector_data"; //$NON-NLS-1$
 	public static final String MAP_TILE_SOURCES = "map_tile_sources"; //$NON-NLS-1$
+	// this value string is synchronized with settings_pref.xml preference name
+	public static final String OVERLAYMAP_TILE_SOURCES = "overlaymap_tile_sources"; //$NON-NLS-1$
+
 	
 	public static boolean isUsingMapVectorData(SharedPreferences prefs){
 		return prefs.getBoolean(MAP_VECTOR_DATA, false);
 	}
 
 	public static final String EXTERNAL_STORAGE_DIR = "external_storage_dir"; //$NON-NLS-1$
-//	public static final String MAP_TILE_SOURCES = "map_tile_sources"; //$NON-NLS-1$
 	
 	public static File getExternalStorageDirectory(SharedPreferences prefs) {
 		return new File(prefs.getString(EXTERNAL_STORAGE_DIR, Environment.getExternalStorageDirectory().getAbsolutePath()));
@@ -481,10 +495,21 @@ public class OsmandSettings {
 		return new File(getExternalStorageDirectory(ctx), path);
 	}
 	
+	
+	
 	public static ITileSource getMapTileSource(SharedPreferences prefs) {
 		String tileName = prefs.getString(MAP_TILE_SOURCES, null);
+		return getTileSourceByName(prefs, tileName);
+	}
+	
+	public static ITileSource getOverlayMapTileSource(SharedPreferences prefs) {
+		String tileName = prefs.getString(OVERLAYMAP_TILE_SOURCES, null);
+		return getTileSourceByName(prefs, tileName);
+	}
+	
+	private static ITileSource getTileSourceByName(SharedPreferences prefs, String tileName) {
 		if (tileName != null) {
-			
+
 			List<TileSourceTemplate> list = TileSourceManager.getKnownSourceTemplates();
 			for (TileSourceTemplate l : list) {
 				if (l.getName().equals(tileName)) {
@@ -493,8 +518,8 @@ public class OsmandSettings {
 			}
 			File tPath = OsmandSettings.extendOsmandPath(prefs, ResourceManager.TILES_PATH);
 			File dir = new File(tPath, tileName);
-			if(dir.exists()){
-				if(tileName.endsWith(SQLiteTileSource.EXT)){
+			if (dir.exists()) {
+				if (tileName.endsWith(SQLiteTileSource.EXT)) {
 					return new SQLiteTileSource(dir);
 				} else if (dir.isDirectory()) {
 					String url = null;
@@ -514,10 +539,11 @@ public class OsmandSettings {
 					return new TileSourceManager.TileSourceTemplate(dir, dir.getName(), url);
 				}
 			}
-				
+
 		}
 		return TileSourceManager.getMapnikSource();
 	}
+	
 
 	public static String getMapTileSourceName(SharedPreferences prefs) {
 		String tileName = prefs.getString(MAP_TILE_SOURCES, null);
@@ -526,6 +552,16 @@ public class OsmandSettings {
 		}
 		return TileSourceManager.getMapnikSource().getName();
 	}
+	
+
+	public static String getOverlayMapTileSourceName(SharedPreferences prefs) {
+		String tileName = prefs.getString(OVERLAYMAP_TILE_SOURCES, null);
+		if (tileName != null) {
+			return tileName;
+		}
+		return TileSourceManager.getMapnikSource().getName();
+	}
+
 
 	// This value is a key for saving last known location shown on the map
 	public static final String LAST_KNOWN_MAP_LAT = "last_known_map_lat"; //$NON-NLS-1$

@@ -50,6 +50,7 @@ import net.osmand.plus.views.GPXLayer;
 import net.osmand.plus.views.MapInfoLayer;
 import net.osmand.plus.views.OsmBugsLayer;
 import net.osmand.plus.views.OsmandMapTileView;
+import net.osmand.plus.views.OverlayMapLayer;
 import net.osmand.plus.views.POIMapLayer;
 import net.osmand.plus.views.PointLocationLayer;
 import net.osmand.plus.views.PointNavigationLayer;
@@ -109,6 +110,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.SeekBar;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 import android.widget.ZoomControls;
@@ -134,7 +136,10 @@ public class MapActivity extends Activity implements IMapLocationListener, Senso
 	private ImageButton backToLocation;
 	private ImageButton backToMenu;
 	
+	private SeekBar seekBar;
+	
 	// the order of layer should be preserved ! when you are inserting new layer
+	private OverlayMapLayer overlayMapLayer;
 	private RendererLayer rendererLayer;
 	private GPXLayer gpxLayer;
 	private RouteLayer routeLayer;
@@ -218,6 +223,7 @@ public class MapActivity extends Activity implements IMapLocationListener, Senso
 			}
 
 		});
+		
 		MapTileDownloader.getInstance().addDownloaderCallback(new IMapDownloaderCallback(){
 			@Override
 			public void tileDownloaded(DownloadRequest request) {
@@ -226,7 +232,8 @@ public class MapActivity extends Activity implements IMapLocationListener, Senso
 					mgr.tileDownloaded(request);
 				}
 				mapView.tileDownloaded(request);
-				
+				if (request != null && !request.error && request.tileSource.equals(overlayMapLayer.map))
+					mapView.overlayTileDownloaded(request);
 			}
 		});
 		
@@ -240,6 +247,39 @@ public class MapActivity extends Activity implements IMapLocationListener, Senso
 		// 0.6 gpx layer
 		gpxLayer = new GPXLayer();
 		mapView.addLayer(gpxLayer, 0.6f);
+		
+
+		// 0.8 Overlay layer
+			seekBar = (SeekBar) findViewById(R.id.SeekBar);
+			seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+				
+				@Override
+				public void onStopTrackingTouch(SeekBar seekBar) {
+					// TODO Auto-generated method stub
+					
+				}
+				
+				@Override
+				public void onStartTrackingTouch(SeekBar seekBar) {
+					// TODO Auto-generated method stub
+					
+				}
+				
+				@Override
+				public void onProgressChanged(SeekBar seekBar, int progress,
+						boolean fromUser) {
+					// TODO Auto-generated method stub
+					overlayMapLayer.setAlpha(progress);
+					mapView.refreshMap();			
+				}
+			});
+			overlayMapLayer = new OverlayMapLayer(seekBar);
+			mapView.addLayer(overlayMapLayer, 0.8f);
+			if (OsmandSettings.isShowingOverlayMap(settings)) {
+				overlayMapLayer.setVisible(true);
+				seekBar.setVisibility(View.VISIBLE);
+			}
+
 		
 		// 1. route layer
 		routeLayer = new RouteLayer(routingHelper);
@@ -768,6 +808,15 @@ public class MapActivity extends Activity implements IMapLocationListener, Senso
 			}
 		}
 		trafficLayer.setVisible(OsmandSettings.isShowingYandexTraffic(settings));
+			
+			if(mapView.getLayers().contains(overlayMapLayer) != OsmandSettings.isShowingOverlayMap(settings)){
+				if(OsmandSettings.isShowingOverlayMap(settings)){
+					mapView.addLayer(overlayMapLayer, 0.1f);
+				} else {
+					mapView.removeLayer(overlayMapLayer);
+				}
+			}
+
 	}
 	
 	private void updateMapSource(){
@@ -790,7 +839,14 @@ public class MapActivity extends Activity implements IMapLocationListener, Senso
 		ZoomControls zoomControls = (ZoomControls) findViewById(R.id.ZoomControls);
 		zoomControls.setIsZoomInEnabled(mapView.getZoom() + 1 < mapView.getMaximumShownMapZoom());
 		zoomControls.setIsZoomOutEnabled(mapView.getZoom() + 1 > mapView.getMinimumShownMapZoom());
+		
+		ITileSource newOverlaySource = OsmandSettings.getOverlayMapTileSource(settings);
+		if(overlayMapLayer.getMap() instanceof SQLiteTileSource){
+			((SQLiteTileSource)overlayMapLayer.getMap()).closeDB();
+		}
+		overlayMapLayer.setMap(newOverlaySource);
 		rendererLayer.setVisible(vectorData);
+
 	}
 	
 	@Override
@@ -804,9 +860,14 @@ public class MapActivity extends Activity implements IMapLocationListener, Senso
 		
 		boolean showTiles = !OsmandSettings.isUsingMapVectorData(settings);
 		ITileSource source = showTiles ? OsmandSettings.getMapTileSource(settings) : null;
-		if (showTiles != !rendererLayer.isVisible() || !Algoritms.objectEquals(mapView.getMap(), source)) {
+		boolean showOverlay = OsmandSettings.isShowingOverlayMap(settings);
+		ITileSource overlaySource = showOverlay ? OsmandSettings.getOverlayMapTileSource(settings) : null;
+		if (showTiles != !rendererLayer.isVisible() || !Algoritms.objectEquals(mapView.getMap(), source)
+				|| !Algoritms.objectEquals(overlayMapLayer.getMap(), overlaySource)) {
 			updateMapSource();
 		}
+		
+
 		
 		updateApplicationModeSettings();
 		
@@ -1295,6 +1356,7 @@ public class MapActivity extends Activity implements IMapLocationListener, Senso
 	private void openLayerSelectionDialog(){
 		List<String> layersList = new ArrayList<String>();
 		layersList.add(getString(R.string.layer_map));
+		layersList.add(getString(R.string.layer_overlaymap));
 		layersList.add(getString(R.string.layer_poi));
 		layersList.add(getString(R.string.layer_transport));
 		layersList.add(getString(R.string.layer_osm_bugs));
@@ -1313,11 +1375,14 @@ public class MapActivity extends Activity implements IMapLocationListener, Senso
 		
 		final boolean[] selected = new boolean[layersList.size()];
 		Arrays.fill(selected, true);
-		selected[1] = OsmandSettings.isShowingPoiOverMap(settings);
-		selected[2] = OsmandSettings.isShowingTransportOverMap(settings);
-		selected[3] = OsmandSettings.isShowingOsmBugs(settings);
-		selected[4] = OsmandSettings.isShowingFavorites(settings);
-		selected[5] = gpxLayer.isVisible();
+
+		selected[1] = OsmandSettings.isShowingOverlayMap(settings);
+		selected[2] = OsmandSettings.isShowingPoiOverMap(settings);
+		selected[3] = OsmandSettings.isShowingTransportOverMap(settings);
+		selected[4] = OsmandSettings.isShowingOsmBugs(settings);
+		selected[5] = OsmandSettings.isShowingFavorites(settings);
+		selected[6] = gpxLayer.isVisible();
+
 		selected[trafficInd] = trafficLayer.isVisible();
 		if(routeInfoInd != -1){
 			selected[routeInfoInd] = routeInfoLayer.isUserDefinedVisible(); 
@@ -1334,18 +1399,21 @@ public class MapActivity extends Activity implements IMapLocationListener, Senso
 				if (item == 0) {
 					dialog.dismiss();
 					selectMapLayer();
-				} else if(item == 1){
+				} else if (item == 1) {
+					dialog.dismiss();
+					selectOverlayMapLayer();
+				} else if(item == 2){
 					if(isChecked){
 						selectPOIFilterLayer();
 					}
 					OsmandSettings.setShowPoiOverMap(MapActivity.this, isChecked);
-				} else if(item == 2){
-					OsmandSettings.setShowTransortOverMap(MapActivity.this, isChecked);
 				} else if(item == 3){
-					OsmandSettings.setShowingOsmBugs(MapActivity.this, isChecked);
+					OsmandSettings.setShowTransortOverMap(MapActivity.this, isChecked);
 				} else if(item == 4){
-					OsmandSettings.setShowingFavorites(MapActivity.this, isChecked);
+					OsmandSettings.setShowingOsmBugs(MapActivity.this, isChecked);
 				} else if(item == 5){
+					OsmandSettings.setShowingFavorites(MapActivity.this, isChecked);
+				} else if(item == 6){
 					if(gpxLayer.isVisible()){
 						gpxLayer.clearCurrentGPX();
 						getFavoritesHelper().setFavoritePointsFromGPXFile(null);
@@ -1567,6 +1635,39 @@ public class MapActivity extends Activity implements IMapLocationListener, Senso
 				} else {
 					edit.putBoolean(OsmandSettings.MAP_VECTOR_DATA, false);
 					edit.putString(OsmandSettings.MAP_TILE_SOURCES, keys.get(which - 1));
+				}
+				edit.commit();
+				updateMapSource();
+			}
+			
+		});
+		builder.show();
+	}
+	
+
+	private void selectOverlayMapLayer(){
+		Map<String, String> entriesMap = SettingsActivity.getOverlayTileSourceEntries(this);
+		Builder builder = new AlertDialog.Builder(this);
+		final ArrayList<String> keys = new ArrayList<String>(entriesMap.keySet());
+		String[] items = new String[entriesMap.size() + 1];
+		items[0] = getString(R.string.no_overlay);
+		int i = 1;
+		for(String it : entriesMap.values()){
+			items[i++] = it;
+		}
+		builder.setItems(items, new DialogInterface.OnClickListener(){
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				Editor edit = OsmandSettings.getWriteableEditor(MapActivity.this);
+				if(which == 0){
+					edit.putBoolean(OsmandSettings.SHOW_OVERLAY_MAP, false);
+					overlayMapLayer.setVisible(false);
+					seekBar.setVisibility(View.INVISIBLE);
+				} else {
+					edit.putBoolean(OsmandSettings.SHOW_OVERLAY_MAP, true);
+					edit.putString(OsmandSettings.OVERLAYMAP_TILE_SOURCES, keys.get(which - 1));
+					overlayMapLayer.setVisible(true);
+					seekBar.setVisibility(View.VISIBLE);
 				}
 				edit.commit();
 				updateMapSource();
